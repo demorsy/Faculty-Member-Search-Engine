@@ -1,0 +1,424 @@
+  
+from tkinter import*
+from tkinter import ttk
+from tkinter.ttk import Combobox, Progressbar
+from bs4 import BeautifulSoup
+import os
+from selenium import webdriver
+import time
+
+
+
+class SearchEngine(Frame):
+    def __init__(self,parent):
+        Frame.__init__(self, parent)
+        self.parent = parent
+
+
+        self.initUI()
+        self.pack(fill=BOTH)
+
+        self.data = {}
+        self.text_data = {}
+        self.counts_data = {}
+        self.score_data = {}
+
+
+    def initUI(self):
+
+        framehead = Frame(self)
+        framehead.pack(fill=X)
+        self.head = Label(self, text="Sehir Faculty Member Search Engine",bg="blue",fg="white",font=("Arial Black",20))
+        self.head.pack(in_= framehead,fill=X)
+        frame1 = Frame(self)
+        frame1.pack(fill=X,padx=150)
+        self.label_for_entry= Label(self,text="Faculty Profile Url:",font=("",15))
+        self.label_for_entry.pack(side=LEFT,in_=frame1)
+        self.entry_url = Entry(self,width=100)
+        self.entry_url.pack(in_=frame1,pady=5)
+
+        frame2 = Frame(self)
+        frame2.pack(fill=X,pady=10)
+        self.fetch_button = Button(self, text="Fetch Profiles", command=self.fetch_profiles)
+        self.fetch_button.pack(in_=frame2)
+        frame3 = Frame(self)
+        frame3.pack(fill=X,padx=200)
+        self.progress_bar = Canvas(self, bg="gray", width=400, height=20, borderwidth=2, relief='groove')
+        self.progress_bar.pack(in_=frame3,side=LEFT)
+        self.label_for_progress = Label(self,text="0% Completed")
+        self.label_for_progress.pack(in_=frame3,side=LEFT)
+
+        frame4 = Frame(self)
+        frame4.pack(fill=X,pady=20)
+        self.label_keywords=Label(self,text="Keywords:",font=("",15))
+        self.label_keywords.pack(in_=frame4,side=LEFT,padx=20)
+        self.entry_keywords = Entry(self, width=40)
+        self.entry_keywords.pack(in_=frame4,side=LEFT,padx=20)
+        self.label_department = Label(self,text="Department:",font=("",15))
+        self.label_department.pack(in_=frame4,side=LEFT,padx=20)
+        self.entry_department = Combobox(self, width=40,values=["All","Civil Engineering","Computer Science and Engineering","Electrical and Electronics Engineering","Industrial Engineering","Mechanical Engineering"])
+        self.entry_department.pack(in_=frame4,side=LEFT,padx=20)
+        self.entry_department.set(value="All")
+        self.button_search = Button(self,text="Search",command=self.search,width=10)
+        self.button_search.pack()
+        frame5 = Frame(self)
+        frame5.pack(fill=BOTH,pady=10)
+        self.treeview = ttk.Treeview(self, columns=("faculty_member","score","link"))
+        self.treeview.bind("<Double-1>", self.OnDoubleClick)
+
+        self.treeview.column("#0")
+
+        self.treeview.heading("#0",text="Rank")
+        self.treeview.heading("faculty_member", text="Faculty Member")
+        self.treeview.heading("score", text="Score")
+        self.treeview.heading("link", text="Link")
+        self.treeview.pack(in_=frame5)
+
+    def fetch_profiles(self):
+
+
+
+
+
+        def make_soup(link):
+            driver = webdriver.Chrome(
+                os.getcwd() + '/chromedriver')
+            driver.get(link)
+            elem = driver.find_element_by_xpath("//*")  # all of them
+            html = elem.get_attribute("outerHTML")
+            soup = BeautifulSoup(html, 'html.parser')
+            driver.close()
+            return soup
+
+        def get_staff(soup):
+
+            driver = webdriver.Chrome(os.getcwd() + '/chromedriver')
+            # links = soup.find_all(class_="academic-staff-item")
+            who = soup.find_all(class_="academic-staff-name")
+            departments = soup.find_all(class_="academic-staff-department")
+            link = soup.find(class_="academic-staff-category-inside")
+            #link.find_all("a")[item]["href"]
+
+
+
+            for item in range(len(who)):
+                if item >=23:
+                    self.data[who[item].text] = {departments[item].text:"there is no link"}
+
+                else:
+                    self.data[who[item].text] = {departments[item].text:link.find_all("a")[item]["href"]}
+                    print(self.data)
+
+            # self.progress_bar.create_rectangle(0, 0, 200, 25, fill="green")  # 0,0 = sol ust , 0,0 = sag alt
+
+            # self.update()  # update the frame
+
+            for i in range(0, len(list(self.data.keys()))):
+                if i < 23:
+                    # print("https://www.sehir.edu.tr" + list((list(self.data.values())[i]).values())[0])
+                    wes = "https://www.sehir.edu.tr" + list((list(self.data.values())[i]).values())[0]
+                    driver.get(wes)
+                    elem = driver.find_element_by_xpath("//*")  # all of them
+                    html = elem.get_attribute("outerHTML")
+                    soup = BeautifulSoup(html, 'html.parser')
+                    dex = soup.find(class_="academic-staff-detail-content sub-page-content")
+                    self.text_data[list(self.data.keys())[i]]=dex.text
+                    print(self.text_data)
+                    if i ==22:
+                        self.progress_bar.create_rectangle(0, 0, i*19, 25, fill="green")
+                        self.label_for_progress.configure(text="100%")
+                        self.update()
+                    else:
+                        self.progress_bar.create_rectangle(0, 0, i * 19, 25, fill="green")
+                        self.label_for_progress.configure(text=str(i * 4.75) + "%")
+                        self.update()
+
+
+
+                    # print(dex.text)
+                else:
+                    driver.close()
+                    break
+
+        
+
+
+
+
+
+            return self.data
+
+
+
+
+        soup = make_soup(self.entry_url.get())
+        print(get_staff(soup))
+
+
+        print("progress completed")
+        self.label_for_progress.configure(text="Completed")
+
+    def search(self):
+
+        for i in self.treeview.get_children():
+            self.treeview.delete(i)
+        if self.entry_keywords.get() == "":
+
+            if self.entry_department.get() == "All":
+                for i in range (0,len(list(self.data.keys()))):
+
+                    if i <23:
+                        self.treeview.insert("", "end", text=str(i+1), values=(list(self.data.keys())[i], "0","https://www.sehir.edu.tr"+list((list(self.data.values())[i]).values())[0]))
+                    else:
+                        self.treeview.insert("", "end", text=str(i + 1), values=(list(self.data.keys())[i], "0",
+                                                                                 "No link(part time member)"))
+
+                print("yes")
+
+            elif self.entry_department.get() == "Mechanical Engineering":
+                self.rank=1
+                for i in range (0,len(list(self.data.keys()))):
+                    if list((list(self.data.values())[i]).keys())[0] == "Mechanical Engineering":
+
+                        if i < 23:
+                            self.treeview.insert("", "end", text=str(self.rank), values=(list(self.data.keys())[i], "0","https://www.sehir.edu.tr"+list((list(self.data.values())[i]).values())[0]))
+                            self.rank += 1
+                        else:
+                            self.treeview.insert("", "end", text=str(self.rank), values=(list(self.data.keys())[i], "0","No link(Part time member"))
+                            self.rank += 1
+
+            elif self.entry_department.get() == "Industrial Engineering":
+                self.rank=1
+                for i in range (0,len(list(self.data.keys()))):
+                    if list((list(self.data.values())[i]).keys())[0] == "Industrial Engineering":
+
+                        if i < 23:
+                            self.treeview.insert("", "end", text=str(self.rank), values=(list(self.data.keys())[i], "0",
+                                                                                         "https://www.sehir.edu.tr" + list((
+                                                                                                                           list(
+                                                                                                                               self.data.values())[
+                                                                                                                               i]).values())[
+                                                                                             0]))
+                            self.rank += 1
+                        else:
+                            self.treeview.insert("", "end", text=str(self.rank),
+                                                 values=(list(self.data.keys())[i], "0", "No link(Part time member"))
+                            self.rank += 1
+
+            elif self.entry_department.get() == "Electrical and Electronics Engineering":
+                self.rank = 1
+                for i in range(0, len(list(self.data.keys()))):
+                    if list((list(self.data.values())[i]).keys())[0] == "Electrical and Electronics Engineering":
+                        if i < 23:
+                            self.treeview.insert("", "end", text=str(self.rank), values=(list(self.data.keys())[i], "0",
+                                                                                         "https://www.sehir.edu.tr" + list((
+                                                                                                                           list(
+                                                                                                                               self.data.values())[
+                                                                                                                               i]).values())[
+                                                                                             0]))
+                            self.rank += 1
+                        else:
+                            self.treeview.insert("", "end", text=str(self.rank),
+                                                 values=(list(self.data.keys())[i], "0", "No link(Part time member"))
+                            self.rank += 1
+
+            elif self.entry_department.get() == "Civil Engineering":
+                self.rank = 1
+                for i in range(0, len(list(self.data.keys()))):
+                    if list((list(self.data.values())[i]).keys())[0] == "Civil Engineering":
+                        if i < 23:
+                            self.treeview.insert("", "end", text=str(self.rank), values=(list(self.data.keys())[i], "0",
+                                                                                         "https://www.sehir.edu.tr" + list((
+                                                                                                                           list(
+                                                                                                                               self.data.values())[
+                                                                                                                               i]).values())[
+                                                                                             0]))
+                            self.rank += 1
+                        else:
+                            self.treeview.insert("", "end", text=str(self.rank),
+                                                 values=(list(self.data.keys())[i], "0", "No link(Part time member"))
+                            self.rank += 1
+
+            elif self.entry_department.get() == "Computer Science and Engineering":
+                self.rank = 1
+                for i in range(0, len(list(self.data.keys()))):
+                    if list((list(self.data.values())[i]).keys())[0] == "Computer Science and Engineering":
+                        if i < 23:
+                            self.treeview.insert("", "end", text=str(self.rank), values=(list(self.data.keys())[i], "0",
+                                                                                         "https://www.sehir.edu.tr" + list((
+                                                                                                                           list(
+                                                                                                                               self.data.values())[
+                                                                                                                               i]).values())[
+                                                                                             0]))
+                            self.rank += 1
+                        else:
+                            self.treeview.insert("", "end", text=str(self.rank),
+                                                 values=(list(self.data.keys())[i], "0", "No link(Part time member"))
+                            self.rank += 1
+        elif self.entry_keywords.get() != "": # search keywords
+            self.ranks = 0
+            self.control= 0
+            for i in range(len(list(self.text_data.values()))):
+                entry = (self.entry_keywords.get().lower())
+                entry2 = (self.entry_keywords.get().upper())
+                entry3 = ((self.entry_keywords.get()[0]).upper()+self.entry_keywords.get()[1:])
+                cc = list(self.text_data.values())[i].count(entry)
+                c_c = list(self.text_data.values())[i].count(entry2)
+                CC_c = list(self.text_data.values())[i].count(entry3)
+                if cc > 0 or c_c > 0 or CC_c > 0:
+                    print(list(self.text_data.keys())[i])
+                    # print(cc, c_c, CC_c)
+                    sum_of_counts = cc + c_c + CC_c
+
+                    self.counts_data[list(self.text_data.keys())[i]] = sum_of_counts
+                    # print(self.counts_data)
+                    def normalizescores(scores, smallIsBetter=0):  # The same function in mysearchengine.
+                        vsmall = 0.00001  # Avoid division by zero errors
+                        if smallIsBetter:
+                            minscore = min(scores.values())
+                            minscore = max(minscore, vsmall)
+                            return dict([(u, float(minscore) / max(vsmall, l)) for (u, l) \
+                                         in scores.items()])
+                        else:
+                            maxscore = max(scores.values())
+                            if maxscore == 0:
+                                maxscore = vsmall
+                            # print(dict([(u, float(c) / maxscore) for (u, c) in scores.items()]))
+
+                            return dict([(u, float(c) / maxscore) for (u, c) in scores.items()])
+
+
+                    self.score_data[list(self.text_data.keys())[i]] = (list(normalizescores(self.counts_data).values())[self.control])
+
+                    print(self.score_data)
+                    
+
+                    if self.entry_department.get() == "All":
+
+
+                        if i < 23:
+                            self.ranks += 1
+                            self.treeview.insert("", "end", text=str(self.ranks), values=(list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2),
+                                                                                         "https://www.sehir.edu.tr" +
+                                                                                         list((list(self.data.values())[
+                                                                                             i]).values())[0]))
+                        else:
+                            self.treeview.insert("", "end", text=str(self.ranks), values=(list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2),
+                                                                                         "No link(part time member)"))
+
+
+                    elif self.entry_department.get() == "Computer Science and Engineering":
+
+
+                        if list((list(self.data.values())[i]).keys())[0] == "Computer Science and Engineering":
+                            if i < 23:
+                                self.ranks += 1
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                         values=(list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2),
+                                                                 "https://www.sehir.edu.tr" + list((
+                                                                                                       list(
+                                                                                                           self.data.values())[
+                                                                                                           i]).values())[
+                                                                     0]))
+
+                            else:
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                         values=(
+                                                         list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2), "No link(Part time member"))
+
+                    elif self.entry_department.get() == "Civil Engineering":
+
+                        if list((list(self.data.values())[i]).keys())[0] == "Civil Engineering":
+                            if i < 23:
+                                self.ranks += 1
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                     values=(list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2),
+                                                             "https://www.sehir.edu.tr" + list((
+                                                                                                   list(
+                                                                                                       self.data.values())[
+                                                                                                       i]).values())[
+                                                                 0]))
+
+                            else:
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                     values=(
+                                                         list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2), "No link(Part time member"))
+
+                    elif self.entry_department.get() == "Mechanical Engineering":
+
+                        if list((list(self.data.values())[i]).keys())[0] == "Mechanical Engineering":
+                            if i < 23:
+                                self.ranks += 1
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                     values=(list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2),
+                                                             "https://www.sehir.edu.tr" + list((
+                                                                                                   list(
+                                                                                                       self.data.values())[
+                                                                                                       i]).values())[
+                                                                 0]))
+
+                            else:
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                     values=(
+                                                         list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2), "No link(Part time member"))
+
+                    elif self.entry_department.get() == "Electrical and Electronics Engineering":
+
+                        if list((list(self.data.values())[i]).keys())[0] == "Electrical and Electronics Engineering":
+                            if i < 23:
+                                self.ranks += 1
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                     values=(list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2),
+                                                             "https://www.sehir.edu.tr" + list((
+                                                                                                   list(
+                                                                                                       self.data.values())[
+                                                                                                       i]).values())[
+                                                                 0]))
+
+                            else:
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                     values=(
+                                                         list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2), "No link(Part time member"))
+
+                    elif self.entry_department.get() == "Industrial Engineering":
+
+                        if list((list(self.data.values())[i]).keys())[0] == "Industrial Engineering":
+                            if i < 23:
+                                self.ranks += 1
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                     values=(list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2),
+                                                             "https://www.sehir.edu.tr" + list((
+                                                                                                   list(
+                                                                                                       self.data.values())[
+                                                                                                       i]).values())[
+                                                                 0]))
+
+                            else:
+                                self.treeview.insert("", "end", text=str(self.ranks),
+                                                     values=(
+                                                         list(self.data.keys())[i], round(list(self.score_data.values())[self.control],2), "No link(Part time member"))
+                    self.control += 1
+
+
+
+    def OnDoubleClick(self,event):
+        widget = event.widget
+        print("clicked")
+        # print(widget["values"])
+        # for item in self.treeview.selection():
+        #     print(self.treeview.item(item,"values"))
+        print(self.treeview.item(self.treeview.selection())["values"][2])
+        driver = webdriver.Chrome(
+        os.getcwd() + '/chromedriver')
+        driver.get(self.treeview.item(self.treeview.selection())["values"][2])
+
+
+
+def main():
+
+        root = Tk()
+        root.geometry("900x600")
+        root.title("Sehir Faculty Member Search Engine")
+        app = SearchEngine(root)
+        root.mainloop()
+main()
